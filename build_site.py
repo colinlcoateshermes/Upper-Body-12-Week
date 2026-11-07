@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Generate the self-contained index.html for the Upper Body 12-Week site.
 
-v2.0 — hard 45-minute session cap. Superset restructure (4 stations/day), new
-periodisation, per-session time badges that follow the block selector, and a
-per-card rest timer. See /home/hermes/upper-body-spec/SPEC_V2.md.
+v3.0 — same-equipment supersets. Every superset pair now happens on ONE piece
+of equipment in one spot (no walking between machines/racks inside a pair).
+Adds an equipment badge to every station, the new same-equipment superset
+explanation, the "put both loads at the station" note, and updated per-block
+session-time badges. See /home/hermes/upper-body-spec/SPEC_V3.md.
 """
 import json, os
 
@@ -18,79 +20,102 @@ CAT_LABEL = {
     "triceps": "Triceps", "forearms": "Forearms", "core": "Core", "cardio": "Cardio",
 }
 
+# The one superset-explanation sentence required by SPEC_V3 §2.2.
+SUPERSET_LINE = ("Supersets are paired on the same equipment — set up once and stay put. "
+                 "Do a then b back-to-back and rest after b; move to the next station during your rest.")
+LOADS_NOTE = ("If the two exercises in a pair need different loads, put both sets of weights "
+              "at the station before you start the pair.")
+
 # ============================================================
-# STRENGTH — 4 numbered stations per day, mostly antagonist supersets
-# station = (label, kind, items); items = (key, role, note)
-# kind: "solo" | "ss" | "tri"   role: main | other | core | finisher
+# STRENGTH — numbered stations. Every station is performed on ONE piece of
+# equipment (SPEC_V3 §3). "ss" = same-station superset pair (a straight into b).
+# station = (label, equipment, kind, items); items = (key, role, note)
+# kind: "solo" | "ss"   role: main | other | core | finisher
 # ============================================================
 STRENGTH = {
     "A": {
         "title": "STRENGTH A — Push",
         "sub": "Chest · Front Delts · Triceps",
-        "intro": "Antagonist supersets: do a and b back-to-back, rest only after the b exercise.",
+        "intro": SUPERSET_LINE,
         "stations": [
-            ("A1", "solo", [("bb-bench-press", "main",
-                "Main lift. Rest fully at 105s in block 3 — this is the one lift worth the long rest.")]),
-            ("A2", "ss", [("bb-incline-bench-press", "other", "SS with A2b"),
-                          ("db-fly", "other", "SS with A2a")]),
-            ("A3", "ss", [("bb-military-press", "other", "Standing, brace hard, no leg drive."),
-                          ("db-lateral-raise", "other", "SS with A3a")]),
-            ("A4", "ss", [("cable-pushdown", "other", "SS with A4b"),
-                          ("push-up", "finisher", "Finisher: 1 set, to near-failure.")]),
+            ("A1", "Barbell + flat bench", "solo", [
+                ("bb-bench-press", "main",
+                 "Main lift. Rest fully at 105s in block 3 — this is the one lift worth the long rest.")]),
+            ("A2", "Dumbbells + flat bench", "ss", [
+                ("db-bench-press", "other", "a — straight into b: keep the dumbbells at the bench."),
+                ("db-fly", "other", "b — rest after this. Same bench, same dumbbells.")]),
+            ("A3", "Dumbbells", "ss", [
+                ("db-shoulder-press", "other", "a — straight into b: keep the dumbbells in hand."),
+                ("db-lateral-raise", "other", "b — rest after this. Same spot, lighter dumbbells.")]),
+            ("A4", "Cable stack — high pulley", "solo", [
+                ("cable-pushdown", "other", "Solo — one cable station, both sets here.")]),
+            ("A5", "Floor", "solo", [
+                ("push-up", "finisher", "Finisher: 1 set per block, to near-failure.")]),
         ],
-        "swaps": ["db-incline-bench-press", "db-incline-fly", "chest-dip", "bench-dip"],
+        "swaps": ["bb-incline-bench-press", "db-incline-bench-press", "db-incline-fly",
+                  "bb-military-press", "chest-dip", "bench-dip"],
     },
     "B": {
         "title": "STRENGTH B — Pull",
         "sub": "Back · Rear Delts · Traps · Biceps",
-        "intro": "Antagonist supersets: pull, then the a/b pairs back-to-back with rest after b.",
+        "intro": SUPERSET_LINE,
         "stations": [
-            ("B1", "solo", [("bb-bent-over-row", "main",
-                "Main lift. Control the eccentric, no torso heave.")]),
-            ("B2", "ss", [("pull-up", "other", "Use a band or the assisted machine if you cannot get 6 clean reps."),
-                          ("cable-rear-delt-row", "other", "SS with B2a — rope attachment, pull to the face.")]),
-            ("B3", "ss", [("db-bent-over-row", "other", "SS with B3b — single-arm, brace on a bench."),
-                          ("bb-shrug", "other", "SS with B3a")]),
-            ("B4", "ss", [("bb-curl", "other", "SS with B4b — no swing, strict tempo."),
-                          ("db-hammer-curl", "other", "SS with B4a — neutral grip, elbows fixed.")]),
+            ("B1", "Barbell — standing, one bar", "ss", [
+                ("bb-bent-over-row", "main", "a — main lift, one bar, straight into b."),
+                ("bb-shrug", "other", "b — rest after this. Same bar, same stance.")]),
+            ("B2", "Pull-up bar", "ss", [
+                ("pull-up", "main", "a — use a band or the assisted machine if you cannot get 6 clean reps."),
+                ("hanging-leg-hip-raise", "core", "b — core, rest after this. Same bar, no moving.")]),
+            ("B3", "Dumbbells + bench", "solo", [
+                ("db-bent-over-row", "other", "Solo — single-arm, brace on a bench.")]),
+            ("B4", "Dumbbells", "ss", [
+                ("db-curl", "other", "a — straight into b, strict tempo, no swing."),
+                ("db-hammer-curl", "other", "b — rest after this. Neutral grip, elbows fixed.")]),
         ],
-        "swaps": ["chin-up", "lat-pulldown", "close-grip-pulldown", "seated-row", "db-shrug"],
+        "swaps": ["chin-up", "lat-pulldown", "close-grip-pulldown", "seated-row",
+                  "db-shrug", "cable-rear-delt-row", "bb-curl", "bb-preacher-curl"],
     },
     "C": {
         "title": "STRENGTH C — Shoulders &amp; Arms",
         "sub": "Delts · Triceps · Biceps · (optional forearms)",
-        "intro": "Pressing and raises for all three delt heads, then arm isolation — superset as usual.",
+        "intro": SUPERSET_LINE,
         "stations": [
-            ("C1", "solo", [("db-shoulder-press", "main", "Seated, back supported.")]),
-            ("C2", "ss", [("bb-upright-row", "other", "SS with C2b — wide grip to spare the shoulders."),
-                          ("db-lateral-raise", "other", "SS with C2a — strict, light, lead with the elbows.")]),
-            ("C3", "ss", [("close-grip-bench-press", "other", "SS with C3b — shoulder-width grip, elbows tucked."),
-                          ("db-rear-lateral-raise", "other", "SS with C3a — chest supported, tiny weights.")]),
-            ("C4", "ss", [("skull-crusher", "other", "SS with C4b — control the bar to the forehead."),
-                          ("db-concentration-curl", "other", "SS with C4a — brace the elbow on the thigh.")]),
+            ("C1", "Barbell + flat bench", "ss", [
+                ("close-grip-bench-press", "main", "a — main lift, shoulder-width grip, elbows tucked."),
+                ("skull-crusher", "other", "b — rest after this. Same bench, same bar, control it to the forehead.")]),
+            ("C2", "Dumbbells", "ss", [
+                ("db-shoulder-press", "other", "a — seated, back supported, straight into b."),
+                ("db-lateral-raise", "other", "b — rest after this. Strict, light, lead with the elbows.")]),
+            ("C3", "Dumbbells", "ss", [
+                ("db-rear-lateral-raise", "other", "a — straight into b, chest supported, tiny weights."),
+                ("db-concentration-curl", "other", "b — rest after this. Brace the elbow on the thigh.")]),
+            ("C4", "Barbell — standing, one bar", "ss", [
+                ("bb-upright-row", "other", "a — wide grip to spare the shoulders, straight into b."),
+                ("bb-curl", "other", "b — rest after this. Same bar.")]),
         ],
-        "optional": ["bb-preacher-curl", "db-arnold-press", "db-front-raise",
-                     "bb-wrist-curl", "bb-reverse-wrist-curl", "bb-reverse-curl",
-                     "db-triceps-extension", "db-kickback"],
+        "optional": ["db-arnold-press", "db-front-raise", "bb-preacher-curl",
+                     "db-kickback", "db-triceps-extension", "bb-wrist-curl",
+                     "bb-reverse-wrist-curl", "bb-reverse-curl"],
     },
     "D": {
         "title": "STRENGTH D — Upper-body Hypertrophy + Core",
         "sub": "Bodyweight pushes/pulls · Core",
-        "intro": "Higher-rep bodyweight and cable supersets, finishing with a core triset.",
+        "intro": SUPERSET_LINE,
         "stations": [
-            ("D1", "ss", [("chest-dip", "other", "SS with D1b — lean forward for the chest."),
-                          ("inverted-row", "other", "SS with D1a — bodyweight horizontal pull.")]),
-            ("D2", "ss", [("push-up", "other", "SS with D2b — elevate feet or add a vest to progress."),
-                          ("cable-lying-fly", "other", "SS with D2a — constant tension on the pecs.")]),
-            ("D3", "ss", [("db-kickback", "other", "SS with D3b — elbow high and fixed."),
-                          ("db-curl", "other", "SS with D3a — alternating dumbbell curl.")]),
-            ("D4", "tri", [("crunch", "core", "Controlled, no neck pulling."),
-                           ("hanging-leg-hip-raise", "core", "Ab strap or bar."),
-                           ("superman", "core", "Lower-back / spinal erectors.")]),
+            ("D1", "Dip station", "solo", [
+                ("chest-dip", "main", "Main lift — lean forward for the chest.")]),
+            ("D2", "Floor / mat", "ss", [
+                ("push-up", "other", "a — elevate feet or add a vest to progress, straight into b."),
+                ("crunch", "core", "b — core, rest after this. Controlled, no neck pulling.")]),
+            ("D3", "Dumbbells", "ss", [
+                ("db-curl", "other", "a — alternating dumbbell curl, straight into b."),
+                ("db-side-bend", "core", "b — core, rest after this.")]),
+            ("D4", "Barbell rack — low bar", "solo", [
+                ("inverted-row", "other", "Solo — bodyweight horizontal pull on a low bar.")]),
         ],
         "core_options": ["crunch-arms-crossed", "sit-up", "weighted-incline-sit-up",
                          "cable-kneeling-crunch", "cable-seated-crunch", "twisting-crunch",
-                         "db-side-bend", "bird-dog"],
+                         "bird-dog", "superman"],
     },
 }
 
@@ -137,37 +162,37 @@ CARDIO = {
     },
 }
 
-# ---- periodisation (new, SPEC_V2 §2) ----
+# ---- periodisation (SPEC_V3 §4) ----
 BLOCKS = [
-    ("1 — Foundation", "1–3", "3 / 3", "10–12", "main 75s · other 45–60s", "7"),
+    ("1 — Foundation", "1–3", "3 / 3", "10–12", "main 75s · other 60s", "7"),
     ("2 — Volume", "4–6", "3 / 3", "8–10", "main 90s · other 60–75s", "8"),
     ("3 — Strength", "7–9", "4 / 3", "6–8", "main 105s · other 60–75s", "8–9"),
-    ("4 — Peak Overload", "10–11", "main 3 (top set + 2 back-off @ −10%) / other 4", "5–8",
+    ("4 — Peak Overload", "10–11", "main 3 (top set + 2 back-off @ −10%) / 3", "5–8",
      "main 105s · other 60–75s", "9"),
     ("5 — Deload &amp; Retest", "12", "2 / 2", "8–10 @ ~60% of week-11 load", "45–60s", "5–6"),
 ]
 
 # per-block sets / reps / rest by role
 BLKSCHEME = {
-    1: {"main": ("3", "10–12", "75s"), "other": ("3", "10–12", "45–60s"),
+    1: {"main": ("3", "10–12", "75s"), "other": ("3", "10–12", "60s"),
         "core": ("3", "12–20", "45s"), "finisher": ("1", "to near-failure", "—")},
     2: {"main": ("3", "8–10", "90s"), "other": ("3", "8–10", "60–75s"),
         "core": ("3", "15–20", "45s"), "finisher": ("1", "to near-failure", "—")},
     3: {"main": ("4", "6–8", "105s"), "other": ("3", "6–8", "60–75s"),
         "core": ("3", "12–15", "45s"), "finisher": ("1", "to near-failure", "—")},
-    4: {"main": ("3 (top + 2 back-off @ −10%)", "5–8", "105s"), "other": ("4", "5–8", "60–75s"),
+    4: {"main": ("3 (top + 2 back-off @ −10%)", "5–8", "105s"), "other": ("3", "5–8", "60–75s"),
         "core": ("4", "15–20", "45s"), "finisher": ("1", "to near-failure", "—")},
     5: {"main": ("2", "8–10 @ 60%", "45–60s"), "other": ("2", "8–10 @ 60%", "45–60s"),
         "core": ("2", "15 easy", "45s"), "finisher": ("1", "easy set", "—")},
 }
 RPE = {1: "7", 2: "8", 3: "8–9", 4: "9", 5: "5–6"}
 
-# per-block session times (SPEC_V2 §4)
+# per-block session times (SPEC_V3 §4)
 TIME = {
-    "A": ["35 min", "36 min", "41 min", "39 min", "24 min"],
-    "B": ["35 min", "36 min", "41 min", "39 min", "24 min"],
-    "C": ["35 min", "35 min", "39 min", "41 min", "24 min"],
-    "D": ["38 min", "39 min", "41 min", "41 min", "27 min"],
+    "A": ["37 min", "38 min", "41 min", "39 min", "25 min"],
+    "B": ["34 min", "35 min", "40 min", "35 min", "24 min"],
+    "C": ["36 min", "36 min", "38 min", "36 min", "25 min"],
+    "D": ["33 min", "35 min", "38 min", "35 min", "23 min"],
 }
 CARDIO_TIME = {
     "1": ["35-45 min", "35-45 min", "35-45 min", "35-45 min", "25-30 min"],
@@ -183,6 +208,9 @@ WEEK = [
 ]
 
 STRENGTH_PRESETS = [45, 60, 75, 90, 105]
+
+# Collected machine-readable station data, embedded in the page and asserted below.
+STATION_META = []
 
 
 def scheme_str(role, b, lead=False):
@@ -215,14 +243,14 @@ def rest_timer(tid, presets):
 
 
 # ---- exercise row ----
-def ex_row(key, role, note, label, lead):
+def ex_row(key, role, note, label, lead, equipment):
     e = EX[key]
     spans = "".join(
         f'<span class="scheme" data-block="{b}">{scheme_str(role, b, lead)}</span>' for b in range(1, 6)
     )
     note_html = f'<div class="ex-note">{note}</div>' if note else ""
     return (
-        f'<div class="ex-item" data-role="{role}">'
+        f'<div class="ex-item" data-role="{role}" data-equipment="{equipment}">'
         f'<a class="thumb" href="images/{e["file"]}" onclick="return lightbox(event,this)">'
         f'<img src="images/{e["file"]}" alt="{e["name"]}" loading="lazy"></a>'
         f'<div class="ex-body">'
@@ -234,18 +262,24 @@ def ex_row(key, role, note, label, lead):
     )
 
 
-def station_html(label, kind, items):
-    tag = {"ss": '<span class="ss-tag">SUPERSET</span>',
-           "tri": '<span class="tri-tag">TRISET</span>',
-           "solo": ""}[kind]
+def station_html(day, label, equipment, kind, items):
+    tag = {"ss": '<span class="ss-tag">SUPERSET</span>', "solo": ""}[kind]
     rows = []
+    meta_items = []
     for i, (key, role, note) in enumerate(items):
         sub = label if kind == "solo" else label + ("abc"[i])
-        lead = (kind in ("ss", "tri")) and i < len(items) - 1
-        rows.append(ex_row(key, role, note, sub, lead))
+        lead = kind == "ss" and i < len(items) - 1
+        rows.append(ex_row(key, role, note, sub, lead, equipment))
+        meta_items.append({"label": sub, "key": key, "equipment": equipment})
+    STATION_META.append({
+        "day": day, "station": label, "kind": kind, "equipment": equipment,
+        "items": meta_items,
+    })
     return (
-        f'<div class="station">'
-        f'<div class="station-head"><span class="station-label">{label}</span>{tag}</div>'
+        f'<div class="station" data-station="{label}" data-kind="{kind}" data-equipment="{equipment}">'
+        f'<div class="station-head"><span class="station-label">{label}</span>'
+        f'<span class="equip-badge" title="All exercises in this station use this equipment">{equipment}</span>'
+        f'{tag}</div>'
         f'<div class="ex-list">{"".join(rows)}</div>'
         f'</div>'
     )
@@ -264,18 +298,20 @@ def cardio_mod(key):
 strength_html = []
 for day in "ABCD":
     d = STRENGTH[day]
-    stations = "".join(station_html(lbl, kind, items) for lbl, kind, items in d["stations"])
+    stations = "".join(
+        station_html(day, lbl, equip, kind, items) for lbl, equip, kind, items in d["stations"]
+    )
     extra = ""
     if "optional" in d:
-        opt_rows = "".join(ex_row(k, "other", "", "opt", False) for k in d["optional"])
+        opt_rows = "".join(ex_row(k, "other", "", "opt", False, "—") for k in d["optional"])
         extra = (
             '<div class="section-title" style="margin-top:14px">Optional — only if the clock allows</div>'
             f'<div class="ex-list">{opt_rows}</div>'
         )
     if "core_options" in d:
-        opt_rows = "".join(ex_row(k, "core", "", "core", False) for k in d["core_options"])
+        opt_rows = "".join(ex_row(k, "core", "", "core", False, "—") for k in d["core_options"])
         extra = (
-            '<div class="section-title" style="margin-top:14px">Rotate the core triset each week with</div>'
+            '<div class="section-title" style="margin-top:14px">Rotate the core a/b slot each week with</div>'
             f'<div class="ex-list">{opt_rows}</div>'
         )
     strength_html.append(f'''
@@ -364,6 +400,8 @@ week_strip = "".join(
     f'<div class="wcell {kind}"><div class="wdow">{dow}</div><div class="wsess">{sess}</div></div>'
     for dow, sess, kind in WEEK
 )
+
+station_data_json = json.dumps(STATION_META, ensure_ascii=False)
 
 HTML = f'''<!DOCTYPE html>
 <html lang="en">
@@ -467,10 +505,15 @@ HTML = f'''<!DOCTYPE html>
 
   /* Station / superset */
   .station {{ margin-bottom:12px; }}
-  .station-head {{ display:flex; align-items:center; gap:8px; margin:4px 0 6px; }}
+  .station-head {{ display:flex; align-items:center; gap:8px; margin:4px 0 6px; flex-wrap:wrap; }}
   .station-label {{
     font-size:0.78em; font-weight:700; color:#fff; background:var(--bg);
     border:1px solid var(--border); border-radius:6px; padding:2px 9px;
+  }}
+  .equip-badge {{
+    font-size:0.68em; font-weight:700; text-transform:uppercase; letter-spacing:.4px;
+    color:var(--orange); background:#d299221a; border:1px solid var(--orange);
+    border-radius:10px; padding:1px 9px;
   }}
   .ss-tag {{
     font-size:0.6em; font-weight:700; letter-spacing:.6px; color:var(--purple);
@@ -613,6 +656,7 @@ HTML = f'''<!DOCTYPE html>
 </style>
 </head>
 <body>
+<script id="station-data" type="application/json">{station_data_json}</script>
 <div class="container">
 
   <div class="header">
@@ -638,7 +682,9 @@ HTML = f'''<!DOCTYPE html>
     <h2 class="sec">How this program works</h2>
     <p>The week is a fixed alternation of <strong>1 strength day + 1 cardio day</strong>, repeated every week for all 12 weeks — <strong>7 training days per week, zero rest days</strong>. Total: 48 strength sessions + 36 cardio sessions.</p>
     <p><strong>Weekly pattern:</strong> Mon Strength A (Push) · Tue Cardio 1 · Wed Strength B (Pull) · Thu Cardio 2 · Fri Strength C (Shoulders &amp; Arms) · Sat Cardio 3 · Sun Strength D (Hypertrophy + Core).</p>
-    <div class="rule">Every session is capped at 45 minutes. Supersets (a/b pairs) and tighter rest are what make that possible — do the pairs back-to-back, rest only after the b exercise.</div>
+    <div class="rule">{SUPERSET_LINE}</div>
+    <div class="rule">{LOADS_NOTE}</div>
+    <div class="rule">Every session is capped at 45 minutes. The station layout and tighter rest are what make that possible.</div>
     <div class="rule">Load progression: add <strong>2.5–5%</strong> to upper-body lifts (or +1–2 reps) once every set hits the top of its rep range at or below the block's target RPE. <strong>Never grind to failure</strong> on the no-rest-day schedule.</div>
     <p class="warn">No-rest-day autoregulation: if resting heart rate is elevated, sleep is poor, or joints ache, drop the cardio to Zone&nbsp;1 and skip the finishers for that day. <strong>The deload week (week 12) is not optional.</strong></p>
     <p>Cardio in this program is <strong>cardiovascular work, not leg strength training</strong> — legs are deliberately excluded.</p>
@@ -652,7 +698,7 @@ HTML = f'''<!DOCTYPE html>
         <tbody>{block_rows}</tbody>
       </table>
     </div>
-    <p class="intro" style="margin-top:10px">Core work uses <strong>45s rest in every block</strong>. Rest is taken <strong>after the second exercise of a superset pair</strong>, not between the pair.</p>
+    <p class="intro" style="margin-top:10px">Core work uses <strong>45s rest in every block</strong>. Rest is taken <strong>after the second exercise of a superset pair</strong>, not between the pair. Every station is done on one piece of equipment.</p>
   </div>
 
   <div class="card">
@@ -851,3 +897,11 @@ print("images/*.gif references (unique):", len(set(
 )))
 print("total images/ occurrences:", HTML.count("images/"))
 print("tracker cells:", HTML.count("data-key="))
+
+# ---------------- SPEC_V3 §5 automated assertion ----------------
+# No superset pair may reference two different equipment labels.
+bad = [s for s in STATION_META
+       if s["kind"] == "ss" and len({i["equipment"] for i in s["items"]}) > 1]
+assert not bad, f"superset pair(s) with differing equipment: {bad}"
+ss_count = sum(1 for s in STATION_META if s["kind"] == "ss")
+print(f"ASSERTION OK: {ss_count} superset pairs, 0 with mismatched equipment labels")
